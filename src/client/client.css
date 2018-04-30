@@ -1,0 +1,26 @@
+body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+#stats {
+  position: absolute;
+  width: 300px;
+  top: 150px;
+  text-align: left;
+  opacity: 0;
+}
+
+.file-graph-stats {
+  margin-left: 2rem;
+  text-align: center;
+  position: relative;
+  clear: both;
+}
+
+.file-graph-stats th {
+  padding-right: .5rem;
+}
