@@ -12,6 +12,10 @@
     "build:js": "rollup -c rollup.config.js",
     "build:css": "cp src/client/client.css dist/client.css"
   },
+  "files": [
+    "src/*",
+    "dist/*"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/keithamus/sourcemap-visualiser"
