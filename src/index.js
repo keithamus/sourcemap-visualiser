@@ -103,7 +103,7 @@ module.exports = (sourcemap, {
       <meta charset="utf-8"/>
       <title>${ title || sourcemap.file }</title>
       <style>${ style }</style>
-    <head>
+    </head>
     <body>
       <h1>${ title || sourcemap.file }</h1>
       <div id="graph"></div>
