@@ -1,6 +1,6 @@
 {
   "name": "sourcemap-visualiser",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Generate HTML pages that visualise your sourcemaps",
   "main": "./src/index.js",
   "bin": {
