@@ -148,15 +148,19 @@ export default class Sunburst {
       .attrTween('d', (d) => () => this.arcSegment(d))
   }
 
+  highlightNodes(shouldHighlight) {
+    this.visualization.selectAll('path').style('opacity', 0.3)
+    this.visualization
+      .selectAll('path')
+      .filter(shouldHighlight)
+      .style('opacity', 1)
+  }
+
   highlightNode(d /* : any */) {
     const sequenceArray = this.getAncestors(d)
     this.updateBreadcrumbs(sequenceArray)
     this.updateStats(d)
-    this.visualization.selectAll('path').style('opacity', 0.3)
-    this.visualization
-      .selectAll('path')
-      .filter((node) => sequenceArray.indexOf(node) >= 0)
-      .style('opacity', 1)
+    this.highlightNodes((node) => sequenceArray.indexOf(node) >= 0)
   }
 
   resetHighlights() {
@@ -176,6 +180,10 @@ export default class Sunburst {
       current = current.parent
     }
     return path
+  }
+
+  hideStats() {
+    this.stats.style.opacity = '0'
   }
 
   updateStats(node /* : any */) {
@@ -240,4 +248,5 @@ export default class Sunburst {
 
     this.breadcrumbs.style('visibility', '')
   }
+
 }

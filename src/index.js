@@ -65,6 +65,7 @@ const defaultBuildTree = (sourcemap, table) => {
       size,
       sizeGzipped,
       loc,
+      contents,
       table: Object.assign({
         'Name': name,
         'Size': `${ friendlyBytes(size) } (${ friendlyBytes(sizeGzipped) } gz)`,
@@ -72,6 +73,24 @@ const defaultBuildTree = (sourcemap, table) => {
     })
   }
   return tree
+}
+
+
+const escapeRg = /["&'<>`]/g
+const escapeMap = {
+  '"': '&quot;',
+  '&': '&amp;',
+  '\'': '&#x27;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '`': '&#x60;',
+}
+const escape = (str) => str.replace(escapeRg, (symbol) => escapeMap[symbol])
+const jsonStringifyEscaper = (key, value) => {
+  if (typeof value === 'string') {
+    return escape(value)
+  }
+  return value
 }
 
 module.exports = (sourcemap, {
@@ -106,11 +125,12 @@ module.exports = (sourcemap, {
     </head>
     <body>
       <h1>${ title || sourcemap.file }</h1>
+      <input id="search" type="text"/>
       <div id="graph"></div>
       <script type="text/javascript">
         ${ script }
         ;;
-        var data = (${ JSON.stringify(buildTree(sourcemap, table), null, 2) })
+        var data = (${ (JSON.stringify(buildTree(sourcemap, table), jsonStringifyEscaper, 2)) })
       </script>
     </body>
     </html>
