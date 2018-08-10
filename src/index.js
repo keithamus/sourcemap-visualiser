@@ -25,9 +25,11 @@ const friendlyBytes = (bytes) => {
 }
 
 const CANNOT_EXTRACT_SOURCEMAP = Symbol('CANNOT_EXTRACT_SOURCEMAP')
-const SOURCEMAP_HAS_NO_SORUCECONTENTS = Symbol('SOURCEMAP_HAS_NO_SORUCECONTENTS')
+const SOURCEMAP_IN_DIFFERENT_FILE = Symbol('SOURCEMAP_IN_DIFFERENT_FILE')
+const SOURCEMAP_HAS_NO_SOURCECONTENTS = Symbol('SOURCEMAP_HAS_NO_SOURCECONTENTS')
 const INVALID_SOURCEMAP = Symbol('INVALID_SOURCEMAP')
-const sourceMapRegExp = /^(?:\/\/|\/\*)#\s*sourceMappingURL\s*=data:application\/json;base64,(.*)(?:\*\/)?$/m
+const sourceMapRegExp = /^(?:\/\/|\/\*)#\s*sourceMappingURL\s*=(.*)(?:\*\/)?$/m
+const dataPrelude = 'data:application/json;base64,'
 const extractSourcemap = (code) => {
   const matches = stringFromBufferLike(code).match(sourceMapRegExp)
   if (!matches || matches.length !== 2) {
@@ -36,7 +38,13 @@ const extractSourcemap = (code) => {
       { code: CANNOT_EXTRACT_SOURCEMAP, matches }
     )
   }
-  return JSON.parse(Buffer.from(matches[1], 'base64').toString('utf-8'))
+  if (matches[1].startsWith(dataPrelude) === false) {
+    throw Object.assign(
+      new Error('Sourcemap refers to different file. Refusing to read other file'),
+      { code: SOURCEMAP_IN_DIFFERENT_FILE, matches }
+    )
+  }
+  return JSON.parse(Buffer.from(matches[1].substr(dataPrelude.length), 'base64').toString('utf-8'))
 }
 
 
@@ -113,7 +121,7 @@ module.exports = (sourcemap, {
   if (!sourcemap.sources || !sourcemap.sourcesContent || sourcemap.sources.length !== sourcemap.sourcesContent.length) {
     throw Object.assign(
       new TypeError('sourcemap does not countain sourceContents'),
-      { code: SOURCEMAP_HAS_NO_SORUCECONTENTS }
+      { code: SOURCEMAP_HAS_NO_SOURCECONTENTS }
     )
   }
   return `<!DOCTYPE html>
@@ -140,5 +148,6 @@ module.exports = (sourcemap, {
 module.exports.buildTree = defaultBuildTree
 module.exports.extractSourcemap = extractSourcemap
 module.exports.CANNOT_EXTRACT_SOURCEMAP = CANNOT_EXTRACT_SOURCEMAP
-module.exports.SOURCEMAP_HAS_NO_SORUCECONTENTS = SOURCEMAP_HAS_NO_SORUCECONTENTS
+module.exports.SOURCEMAP_IN_DIFFERENT_FILE = SOURCEMAP_IN_DIFFERENT_FILE
+module.exports.SOURCEMAP_HAS_NO_SOURCECONTENTS = SOURCEMAP_HAS_NO_SOURCECONTENTS
 module.exports.INVALID_SOURCEMAP = INVALID_SOURCEMAP

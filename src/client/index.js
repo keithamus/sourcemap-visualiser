@@ -3,7 +3,7 @@
 import Sunburst from './sunburst'
 const minSize = 960
 const debounceTime = 300
-const defaultFilterFunction = (node, input) => Boolean(node.data.contents && new RegExp(input).test(node.data.contents))
+const defaultFilterFunction = (node, input) => Boolean(node.data && node.data.contents && new RegExp(input).test(node.data.contents))
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.hash.slice(1))

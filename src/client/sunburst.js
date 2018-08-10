@@ -12,9 +12,11 @@ import {
   schemeCategory20,
 } from 'd3'
 
+const kibi = 1024
 const toSize = (size) => {
-  if (size > 1024) {
-    return `${ (size / 1024).toLocaleString({
+  if (size > kibi) {
+    // $FlowFixMe flow disagrees with toLocaleString args
+    return `${ (size / kibi).toLocaleString({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }) }kb`
@@ -36,6 +38,7 @@ const toSize = (size) => {
   loc?: number,
   hasExports?: boolean,
   hasImports?: boolean,
+  data?: { contents: string } 
 |}*/
 export default class Sunburst {
   /* :: visualization: any */
@@ -148,7 +151,7 @@ export default class Sunburst {
       .attrTween('d', (d) => () => this.arcSegment(d))
   }
 
-  highlightNodes(shouldHighlight) {
+  highlightNodes(shouldHighlight /* : (node) => boolean */) {
     this.visualization.selectAll('path').style('opacity', 0.3)
     this.visualization
       .selectAll('path')

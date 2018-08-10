@@ -1,24 +1,25 @@
 #!/usr/bin/env node
-/*@flow*/
+/* @flow*/
 const pkg = require('../package.json')
-const { extractSourcemap, Output } = require('./')
+const visualiser = require('./')
 const { promisify } = require('util')
 const { access, mkdir, writeFile, readFile } = require('fs')
-const { join, dirname, basename, extname } = require('path')
+const { join, dirname, basename, extname, resolve } = require('path')
+const { extractSourcemap, SOURCEMAP_IN_DIFFERENT_FILE } = visualiser
 const writeFileAsync = promisify(writeFile)
 const readFileAsync = promisify(readFile)
 const accessAsync = promisify(access)
 const mkdirAsync = promisify(mkdir)
 
-/*:: type options = {
+/* :: type options = {
   files: string[],
   directory?: string|false,
   title: string,
 }*/
 
-const help = additionalMessage => `
-${additionalMessage ? `${additionalMessage}\n\n` : ''}
-Usage: ${pkg.name} [options] <files>
+const help = (additionalMessage) => `
+${ additionalMessage ? `${ additionalMessage }\n\n` : '' }
+Usage: ${ pkg.name } [options] <files>
 
 Options:
   --help, -h         Show help                                         [boolean]
@@ -27,34 +28,33 @@ Options:
 
 Examples:
 
-  ${pkg.name} src/ # Find all sourcemaps in 'src/' and output html files next to them
-  ${pkg.name} -d viz src/ # Find all sourcemaps in 'src/' and output html files to 'viz/'
+  ${ pkg.name } src/ # Find all sourcemaps in 'src/' and output html files next to them
+  ${ pkg.name } -d viz src/ # Find all sourcemaps in 'src/' and output html files to 'viz/'
 `
 
-module.exports.opts = (argv /*: string[]*/) => {
+// eslint-disable-next-line complexity
+module.exports.opts = (argv /* : string[]*/) => {
   let files = []
   let directory = false
-  let showHelp = false
-  let showVersion = false
-  let title = 'Anyliser'
-  argparsing: for (let i = 0; i < argv.length; i += 1) {
+  let title = ''
+  for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg[0] === '-' && arg[1] !== '-' && arg.length > 2) {
-      argv = argv.slice(0, i).concat(arg.split('').slice(1).map(arg => `-${arg}`)).concat(argv.slice(i+1))
+      argv = argv.slice(0, i).concat(arg.split('').slice(1).map((flag) => `-${ flag }`)).concat(argv.slice(i + 1))
     }
     switch (arg) {
       case '--':
         files = files.concat(argv.slice(i + 1))
-        break argparsing
+        i = Infinity
+        break
       case '--help':
       case '-h':
-        showHelp = true
-        break argparsing
+        throw new Error(help())
       case '--version':
       case '-v':
       case '-V':
-        showVersion = true
-        break argparsing
+        process.stdout.write(`${ pkg.version }\n\n`)
+        throw new Error(help())
       case '-d':
       case '--dir':
         directory = argv[(i += 1)]
@@ -64,50 +64,63 @@ module.exports.opts = (argv /*: string[]*/) => {
         title = argv[(i += 1)]
         break
       default:
-        if (arg[0] === '-') throw new Error(`unknown flag ${arg}`)
+        if (arg[0] === '-') {
+          throw new Error(help(`unknown flag ${ arg }`))
+        }
         files.push(arg)
         break
     }
   }
-  if (showVersion) {
-    process.stdout.write(`${pkg.version}\n\n`)
-    throw new Error(help())
+  if (files.length === 0) {
+    throw new Error(help('Please specify files to read'))
   }
-  if (showHelp) throw new Error(help())
-  if (files.length === 0) throw new Error(help(`Please specify files to compile`))
-  return {directory, files}
+  return { directory, files, title }
 }
 
 module.exports.cli = async (
-  stdout /*: stream$Writable*/,
-  stderr /*: stream$Writable*/,
-  {directory, files, title} /*: options*/
+  stdout /* : stream$Writable*/,
+  stderr /* : stream$Writable*/,
+  { directory, files, title } /* : options*/
 ) => {
   const now = Date.now()
   if (directory) {
     try {
-      await accessAsync(directory, 0o7)
-    } catch(e) {
-      await mkdirAsync(directory, 0o777)
+      const readableDirectoryMask = 0o7
+      await accessAsync(directory, readableDirectoryMask)
+    } catch (accessError) {
+      const readableDirectory = 0o777
+      await mkdirAsync(directory, readableDirectory)
     }
   }
-  await Promise.all(files.map(async file => {
-    const contents = await readFileAsync(file, 'utf-8') 
+  await Promise.all(files.map(async (file) => {
+    const contents = await readFileAsync(file, 'utf-8')
     // generate
-    const sourcemap = extractSourcemap(contents)
-    const htmlFile = join(directory || dirname(file), `${basename(file, extname(file))}.html`)
-    await writeFileAsync(htmlFile, await (new Output({ sourcemap, title })).html(), 'utf-8')
+    let sourcemap = null
+    try {
+      sourcemap = extractSourcemap(contents)
+    } catch (extractError) {
+      if (extractError.code === SOURCEMAP_IN_DIFFERENT_FILE) {
+        sourcemap = JSON.parse(await readFileAsync(resolve(dirname(file), extractError.matches[1])))
+      } else {
+        throw extractError
+      }
+    }
+    const htmlFile = join(directory || dirname(file), `${ basename(file, extname(file)) }.html`)
+    await writeFileAsync(htmlFile, await visualiser(sourcemap, { title }), 'utf-8')
   }))
-  stderr.write(`Finished in ${Date.now() - now}ms`)
+  stderr.write(`Finished in ${ Date.now() - now }ms`)
 }
 
 if (require.main === module) {
-  const {opts, cli} = module.exports
+  const { opts, cli } = module.exports
   cli(process.stdout, process.stderr, opts(process.argv.slice(2)))
-    .catch(cliError => {
+    .catch((cliError) => {
       process.stderr.write(cliError.message || cliError)
       process.stderr.write('\n')
-      if (cliError.stack) process.stderr.write(cliError.stack)
+      if (cliError.stack) {
+        process.stderr.write(cliError.stack)
+      }
+      // eslint-disable-next-line no-process-exit
       process.exit(1)
     })
 }

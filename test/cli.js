@@ -1,93 +1,109 @@
 /* @flow */
 const { opts, cli } = require('../src/cli')
+const buildHTML = require('../src')
 const { describe, it, beforeEach, afterEach } = require('mocha')
 const { expect } = require('chai')
 const { promisify } = require('util')
-const { readFile, stat, unlink } = require('fs')
+const { writeFile, readFile, stat, unlink } = require('fs')
 const { join } = require('path')
 const { tmpdir } = require('os')
+const { randomBytes } = require('crypto')
 const { PassThrough } = require('stream')
 const streamToArray = require('stream-to-array')
 const readFileAsync = promisify(readFile)
+const writeFileAsync = promisify(writeFile)
 const unlinkAsync = promisify(unlink)
 const statAsync = promisify(stat)
-const streamToString = async stream => Buffer.concat(await streamToArray(stream)).toString('utf-8')
-const flipPromise = promise =>
-  // eslint-disable-next-line github/no-then
-  promise.then(v => {
-    throw v
-  }, e => e)
+const streamToString = async (stream) => Buffer.concat(await streamToArray(stream)).toString('utf-8')
+const fixture = (file) => join(__dirname, 'fixtures', file)
 describe('cli', () => {
   describe('opts', () => {
     it('returns parsed options hash', () => {
-      expect(opts(['a'])).to.deep.equal({
+      expect(opts([ 'a' ])).to.deep.equal({
         directory: false,
-        files: ['a']
+        files: [ 'a' ],
+        title: '',
       })
     })
 
     it('parses --dir correctly', () => {
-      expect(opts(['--dir', 'foobar', 'a'])).to.deep.equal({
+      expect(opts([ '--dir', 'foobar', 'a' ])).to.deep.equal({
         directory: 'foobar',
-        files: ['a']
+        files: [ 'a' ],
+        title: '',
       })
-      expect(opts(['a', '--dir', 'foobar'])).to.deep.equal({
+      expect(opts([ 'a', '--dir', 'foobar' ])).to.deep.equal({
         directory: 'foobar',
-        files: ['a']
+        files: [ 'a' ],
+        title: '',
       })
     })
 
     it('does not parse anything past --', () => {
-      expect(opts(['--', '-v', '-h', '--dir', 'foobar'])).to.deep.equal({
+      expect(opts([ '--', '-v', '-h', '--dir', 'foobar' ])).to.deep.equal({
         directory: false,
-        files: ['-v', '-h', '--dir', 'foobar']
+        files: [ '-v', '-h', '--dir', 'foobar' ],
+        title: '',
       })
     })
 
     it('does not parse interpolate multiple flags past --', () => {
-      expect(opts(['--', '-vhd'])).to.deep.equal({
+      expect(opts([ '--', '-vhd' ])).to.deep.equal({
         directory: false,
-        files: ['-vhd']
+        files: [ '-vhd' ],
+        title: '',
       })
     })
   })
 
   describe('cli', () => {
-    let stdout
-    let stderr
-    let stdoutString
-    let stderrString
-    let compile
-    beforeEach(() => {
+    let stdout = new PassThrough()
+    let stderr = new PassThrough()
+    let stdoutString = null
+    let stderrString = null
+    let sourcemap = null
+    beforeEach(async () => {
       stdout = new PassThrough()
       stdoutString = streamToString(stdout)
       stderr = new PassThrough()
       stderrString = streamToString(stderr)
-      const time = Date.now()
+      sourcemap = {
+        file: 'foo.js',
+        sources: [ '/foo/bar.js', '/foo/baz.js' ],
+        sourcesContent: [ 'aaa\nbbb', 'ccc\nddd' ],
+      }
+      const sourceMapPrefix = '//#sourceMappingURL=data:application/json;base64,'
+      const sourcemapString = Buffer.from(JSON.stringify(sourcemap)).toString('base64')
+      await writeFileAsync(fixture('a.js'), `${ sourceMapPrefix }${ sourcemapString }`)
     })
     afterEach(async () => {
       try {
-        await unlinkAsync(`${__dirname}/fixtures/a.html`)
-        await unlinkAsync(`${__dirname}/fixtures/b.html`)
-        await unlinkAsync(`${__dirname}/fixtures/c.html`)
-      } catch(e) {}
+        await unlinkAsync(fixture('a.html'))
+        await unlinkAsync(fixture('b.html'))
+        await unlinkAsync(fixture('c.html'))
+      } catch (unlinkError) {
+        // Ignore
+      }
     })
 
     it('writes files next to given files, if directory is false', async () => {
-      await cli(stdout, stderr, {directory: false, files: [join(__dirname, 'fixtures', 'a.js')]})
-      const generated = 'hello'
-      expect(await readFileAsync(join(__dirname, 'fixtures', 'a.html'), 'utf-8')).to.equal(generated)
+      await cli(stdout, stderr, { directory: false, files: [ fixture('a.js') ], title: 'Foo' })
+      const generated = buildHTML(sourcemap, { title: 'Foo' })
+      expect(await readFileAsync(fixture('a.html'), 'utf-8')).to.equal(generated)
+      stderr.end()
+      stdout.end()
+      expect(await stderrString).to.match(/Finished in \d{1,3}ms/)
+      expect(await stdoutString).to.equal('')
     })
 
     it('writes files into given directory, making it if it doesnt exist', async () => {
-      const directory = join(tmpdir(), Math.floor(Math.random()*1e15).toString(16))
+      const randomFolderLength = 10
+      const directory = join(tmpdir(), randomBytes(randomFolderLength).toString('hex'))
       const start = Date.now()
-      const generated = 'hello'
-      await cli(stdout, stderr, {directory, files: [ `${__dirname}/fixtures/a.js` ]})
+      await cli(stdout, stderr, { directory, files: [ fixture('a.js') ], title: 'Foo' })
+      const generated = buildHTML(sourcemap, { title: 'Foo' })
       expect(await statAsync(directory)).to.have.property('ctimeMs').gt(start)
-      expect(await readFileAsync(`${directory}/a.html`, 'utf-8')).to.equal(generated)
+      expect(await readFileAsync(`${ directory }/a.html`, 'utf-8')).to.equal(generated)
     })
-
   })
-
 })
