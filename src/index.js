@@ -28,7 +28,7 @@ const CANNOT_EXTRACT_SOURCEMAP = Symbol('CANNOT_EXTRACT_SOURCEMAP')
 const SOURCEMAP_IN_DIFFERENT_FILE = Symbol('SOURCEMAP_IN_DIFFERENT_FILE')
 const SOURCEMAP_HAS_NO_SOURCECONTENTS = Symbol('SOURCEMAP_HAS_NO_SOURCECONTENTS')
 const INVALID_SOURCEMAP = Symbol('INVALID_SOURCEMAP')
-const sourceMapRegExp = /^(?:\/\/|\/\*)#\s*sourceMappingURL\s*=(.*)(?:\*\/)?$/m
+const sourceMapRegExp = /^(?:\/\/|\/\*)#\s*sourceMappingURL\s*=([^* ]+)\s*(?:\*\/)?$/m
 const dataPrelude = 'data:application/json;base64,'
 const extractSourcemap = (code) => {
   const matches = stringFromBufferLike(code).match(sourceMapRegExp)
