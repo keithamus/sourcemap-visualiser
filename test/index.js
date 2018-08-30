@@ -44,6 +44,12 @@ describe('extractSourcemap', () => {
       .to.throw(Error, /file/)
       .with.property('code', SOURCEMAP_IN_DIFFERENT_FILE)
   })
+
+  it('trims the file name if sourceMappingURL points to a different file', () => {
+    expect(() => extractSourcemap('\n/*# sourceMappingURL=file.map\n\n'))
+      .to.throw(Error, /file/)
+      .with.nested.property('matches[1]', 'file.map')
+  })
 })
 
 describe('buildHTML', () => {
