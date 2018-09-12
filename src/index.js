@@ -53,10 +53,11 @@ const defaultBuildTree = (sourcemap, table) => {
   for (let i = 0; i < sourcemap.sources.length; i += 1) {
     const name = sourcemap.sources[i]
     const contents = sourcemap.sourcesContent[i]
-    const pathParts = parse(name).pathname.split('/')
+    const parsedPath = parse(name)
+    const pathParts = ((parsedPath.hostname || '') + (parsedPath.pathname || '')).split('/')
     let node = tree
     for (const part of pathParts) {
-      if (part === '' || part === '/') {
+      if (part === '' || part === '/' || part === '.') {
         continue
       }
       let currentNode = node.children.find((child) => child.name === part)

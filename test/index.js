@@ -228,4 +228,47 @@ describe('buildTree', () => {
       ],
     })
   })
+
+  it('works with pseudo protocol file entries like webpack:///path/to.file', () => {
+    sourcemap = {
+      file: 'foo.js',
+      sources: [ 'webpack:///./foo/bar.js', 'webpack://baz.js' ],
+      sourcesContent: [ 'aaa\nbbb', 'ccc\nddd' ],
+    }
+    expect(buildTree(sourcemap, () => ({}))).to.deep.equal({
+      name: '/',
+      children: [
+        {
+          name: 'foo',
+          children: [
+            {
+              name: 'bar.js',
+              children: [],
+              contents: 'aaa\nbbb',
+              size: 7,
+              sizeGzipped: 15,
+              loc: 2,
+              table: {
+                Name: 'webpack:///./foo/bar.js',
+                Size: '7 b (15 b gz)',
+              },
+            },
+          ],
+        },
+        {
+          name: 'baz.js',
+          children: [],
+          contents: 'ccc\nddd',
+          size: 7,
+          sizeGzipped: 15,
+          loc: 2,
+          table: {
+            Name: 'webpack://baz.js',
+            Size: '7 b (15 b gz)',
+          },
+        },
+      ],
+    })
+  })
+
 })
